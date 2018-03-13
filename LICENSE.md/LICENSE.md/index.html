@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<meta charset="utf-8" />
+	<style>
+		.boxes 
+		{
+			font-family: monospace;
+			height:      330px;
+			width:       300px; 
+		}
+		#ccu 
+		{
+			border-bottom-color: black;
+			border-right-color:  black;
+			border-left-color:   #808080;
+			background-color:    #3D3D3D;
+			border-top-color:    #808080;
+			border-radius:       3px;
+			padding-right:       12px;
+			padding-top:         12px;
+			padding-left:        6px;
+			font-family:         monospace;
+			height:              30px;
+			border:              1px solid;
+			width:               250px;
+			color:               #CCCCFF;
+		}
+		#ccuIndicator
+		{
+			border-bottom-color: #666666;
+			border-right-color:  #666666;
+			border-left-color:   #C0C0C0;
+			border-top-color:    #C0C0C0;
+			border-radius:       8px;
+			border:              1px solid;
+			width:               16px; 
+			float:               right; 
+		}
+		#ccuMPT
+		{
+			background-color: #660000;
+			padding-right:    2px;
+			padding-left:     2px;
+			color:            lime;
+		}
+		#mainTable
+		{
+			border-collapse: collapse
+			margin:          auto;
+			width:           60%;
+		}
+	</style>
+</head>
+<body>
+	<p><br /></p>
+	<table id="mainTable" >
+		<tr style="height: 100px;">
+			<td>
+				<button id="addTask" onclick="addTasks(1)">Add Task</button>
+				<button id="addTask" onclick="addTasks(10)">Add 10 Tasks</button>
+				<button id="addTask" onclick="addTasks(100)">Add 100 Tasks</button>
+			</td>
+			<td>
+				<div id="ccu">Controller &nbsp; <span id="ccuMPT">MPT: 3</span><span id="ccuIndicator" style="background-color: #008000">&nbsp;</span></div>
+			</td>
+			<td><span id="ls">&nbsp;<p><br></p>&nbsp;</span></td>
+		</tr>
+		<tr>
+			<td>
+				QUEUE&nbsp;(<span id="ql">0</span>)
+			</td>
+			<td>
+				INSTANCES&nbsp;(<span id="il">0</span>)
+			</td>
+			<td>
+				LOG
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<textarea id="queue" class="boxes" spellcheck="false"></textarea>
+			</td>
+			<td>
+				<textarea id="instances" class="boxes" spellcheck="false"></textarea>
+			</td>
+			<td>
+				<div id="log" class="boxes" style="border: solid 1px black; overflow-y: scroll"></div>
+			</td>
+		</tr>
+	</table>
+	<p><br /></p>
+	<script type="text/javascript">
+		// base object
+		var scala = {
+			queue:     [],
+			failures:  0,
+			successes: 0,
+			instances: []
+		};
+
+		// update once right away
+		updateFields();
+
+		// set interval for controller
+		var ic = self.setInterval('controller()', 5000);
+		
+		// add n number of tasks to queue
+		function addTasks(n){
+
+			while(n){
+				n--;
+				var neoSessionId = createNewId(8);
+				var taskCreated  = (new Date).toISOString();
+
+				scala.queue.push(neoSessionId);
+				
+				self.log.innerHTML = "Added Task <span style='color:#000080'>" + neoSessionId + "</span> to queue at <span style='color:#990099'>" + taskCreated + "</span><br>" + self.log.innerHTML;
+				
+			}
+
+			updateFields();
+		}
+
+
+		// update stats and all info
+		function updateFields(){
+			// stats
+			var ts = scala.successes;
+			var tf = scala.failures;
+			var tt = ts + tf;
+			var rs = Math.round(((ts / tt) * 1000)) / 10;
+			var rf = Math.round(((tf / tt) * 1000)) / 10;
+			
+			if(tt){
+				self.ls.innerHTML = "" + ts + " tasks succeed with a success rate of " + rs + "%<br>" + tf + " tasks failed with a failure rate of " + rf + "%<br>" + tt + " total tasks have been processed.";				
+			}
+
+			self.ql.innerHTML    = scala.queue.length;
+			self.il.innerHTML    = scala.instances.length;
+			self.queue.value     = scala.queue.join("\n");
+			self.instances.value = scala.instances.join("\n");
+		}
+
+		// base worker process to spawn instances
+		function controller(){
+			self.ccuIndicator.style.backgroundColor = "#00FF00";
+
+			var maxPerTick  = 3;
+			var queueLength = scala.queue.length;
+
+			if(self.maxPerTick){
+				maxPerTick = self.maxPerTick;
+			}
+
+			var status = "";
+			if(!queueLength){ 
+				status = "<span style='color:gray'>nothing to do</span>"; 
+				if(maxPerTick > 5){
+					maxPerTick = Math.floor(maxPerTick / 2);
+				}
+			}
+			else {
+				status = "<span style='color:green'>working</span>";
+				if(queueLength > maxPerTick){
+					maxPerTick *= 2;
+				}
+				else{
+					if(maxPerTick > 5){
+						maxPerTick = Math.floor(maxPerTick / 2);
+					}
+				}
+			}
+
+			self.maxPerTick = maxPerTick;
+
+			self.ccuMPT.innerHTML = "MPT: " + maxPerTick + "";
+
+			self.log.innerHTML = "Running Controller..." + status + "...<br>" + self.log.innerHTML;
+
+			
+			var i = 0;
+			
+			// can I haz tasks
+			while(scala.queue.length && i < maxPerTick){
+				// launch instances
+				var task = scala.queue.shift();
+				var neoInstanceId = createNewId(8);
+				scala.instances.push("i" + neoInstanceId + " w task " + task);
+				var tms = Math.floor(Math.random() * 60000);
+				self.setTimeout("removeInstance('i" + neoInstanceId + "')", tms);
+				self.log.innerHTML = "Instance <span style='color:green'>" + neoInstanceId + "</span> will run task <span style='color:#000080'>" + task + "</span> for <span style='color:red'>" +  Math.round(tms / 1000) + "s</span>  <p />" + self.log.innerHTML;
+				i++;
+			}
+			
+			// cleanup
+			updateFields();
+
+			self.setTimeout("self.ccuIndicator.style.backgroundColor = '#008000'",600);
+		}
+
+
+		function removeInstance(id){
+			var failureChance = Math.random();
+			
+			scala.instances.forEach(
+				function(instance, i){
+					if(instance.startsWith(id)){
+						if(failureChance > 0.9){
+							scala.instances.splice(i, 1);
+							self.log.innerHTML = "<span style='color:red;font-weight:bold;background-color:yellow;'>PROCESS FAILED</span> Instance <span style='color:green'>" + instance + "</span>...<p />" + self.log.innerHTML;
+							
+							var taskId       = instance.substr(-8,8);
+							var taskCreated  = (new Date).toISOString();
+							
+							scala.queue.push(taskId);
+							scala.failures ++;
+							
+							self.log.innerHTML = "Retry <span style='color:red;font-weight:bold'>FAILED<span> Task <span style='color:#000080'>" + taskId + "</span> to queue at <span style='color:#990099'>" + taskCreated + "</span><p />" + self.log.innerHTML;
+						}
+						else {
+							scala.instances.splice(i, 1);
+							scala.successes ++;
+							self.log.innerHTML = "Instance ended with <span style='color:green;font-weight:bold'>SUCCESS</span>: <span style='color:green'>" + instance + "</span>...<p />" + self.log.innerHTML;
+						}
+						
+					}
+				}
+			);
+			updateFields();
+		}
+
+		function createNewId(length){
+			var elements = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			var strLimit = length || 32;
+			var neoId    = "";
+			for (var i = 0; i < strLimit; i++) { neoId += elements.substr(Math.floor(Math.random() * elements.length), 1); }
+			return neoId;
+		}		
+	</script>
+</body>
+</html> 
