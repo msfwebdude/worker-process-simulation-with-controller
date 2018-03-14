@@ -49,7 +49,7 @@
 		{
 			border-collapse: collapse
 			margin:          auto;
-			width:           60%;
+			width:           80%;
 		}
 	</style>
 </head>
@@ -86,7 +86,7 @@
 				<textarea id="instances" class="boxes" spellcheck="false"></textarea>
 			</td>
 			<td>
-				<div id="log" class="boxes" style="border: solid 1px black; overflow-y: scroll"></div>
+				<div id="log" class="boxes" style="border: solid 1px black; overflow-y: scroll; width: 600px"></div>
 			</td>
 		</tr>
 	</table>
@@ -186,7 +186,7 @@
 			while(scala.queue.length && i < maxPerTick){
 				// launch instances
 				var task = scala.queue.shift();
-				var neoInstanceId = createNewId(8);
+				var neoInstanceId = createNewId(16);
 				scala.instances.push("i" + neoInstanceId + " w task " + task);
 				var tms = Math.floor(Math.random() * 60000);
 				self.setTimeout("removeInstance('i" + neoInstanceId + "')", tms);
